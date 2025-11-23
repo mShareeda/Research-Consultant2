@@ -1,12 +1,17 @@
+
 import React, { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { Language } from "../types";
+import { translations } from "../utils/translations";
 
 interface LoadingProps {
   message?: string;
+  lang: Language;
 }
 
-const Loading: React.FC<LoadingProps> = ({ message }) => {
+const Loading: React.FC<LoadingProps> = ({ message, lang }) => {
   const [progress, setProgress] = useState(0);
+  const t = translations[lang];
 
   useEffect(() => {
     // Simulate progress for better UX during AI processing
@@ -37,15 +42,15 @@ const Loading: React.FC<LoadingProps> = ({ message }) => {
         </div>
 
         <div className="space-y-3 w-full">
-            <h3 className="text-2xl font-black text-slate-900">جاري المعالجة الذكية</h3>
+            <h3 className="text-2xl font-black text-slate-900">{t.loadingProcessing}</h3>
             <p className="text-slate-500 font-medium leading-relaxed">
-              {message || "يرجى الانتظار، يقوم النظام الآن بمعالجة البيانات واستدعاء النماذج العلمية..."}
+              {message || t.loadingWait}
             </p>
         </div>
 
         <div className="w-full space-y-2">
             <div className="flex justify-between text-xs font-bold text-slate-400 px-1">
-                <span>التقدم</span>
+                <span>{t.loadingProgress}</span>
                 <span className="font-mono">{Math.round(progress)}%</span>
             </div>
             <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner border border-slate-50">

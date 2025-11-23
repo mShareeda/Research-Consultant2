@@ -7,6 +7,8 @@ export enum AcademicLevel {
 
 export type ResearchFoundation = "إعلامي" | "اجتماعي" | "اقتصادي" | "تربوي" | "نفسي" | "إداري" | "تقني" | "قانوني" | "أخرى";
 
+export type Language = 'ar' | 'en';
+
 export interface Theory {
   name: string;
   match_reason: string;
@@ -32,9 +34,10 @@ export interface ComparisonResult {
 }
 
 export interface AppState {
-  step: 1 | 2 | 3;
+  language: Language | null; // New field
+  step: 0 | 1 | 2 | 3; // Step 0 is language selection
   academicLevel: AcademicLevel;
-  researchFoundation: string; // New field
+  researchFoundation: string;
   researchTitle: string;
   suggestedTheories: Theory[];
   selectedTheory: Theory | null;

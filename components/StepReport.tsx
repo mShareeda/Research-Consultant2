@@ -1,7 +1,8 @@
 
 import React from "react";
-import { Report, Theory, AcademicLevel } from "../types";
+import { Report, Theory, AcademicLevel, Language } from "../types";
 import { RefreshCw, FileText, Layers, Calendar, Lightbulb, GraduationCap, AlertTriangle, Download } from "lucide-react";
+import { translations } from "../utils/translations";
 
 interface StepReportProps {
   report: Report;
@@ -9,9 +10,11 @@ interface StepReportProps {
   title: string;
   level: AcademicLevel;
   onReset: () => void;
+  lang: Language;
 }
 
-const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, onReset }) => {
+const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, onReset, lang }) => {
+  const t = translations[lang];
 
   const handleExportWord = () => {
     const element = document.getElementById("report-content");
@@ -21,14 +24,16 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
     const content = element.innerHTML;
 
     // Construct a Word-friendly HTML document
-    // We add specific Office namespaces and RTL direction
+    const dir = lang === 'ar' ? 'rtl' : 'ltr';
+    const textAlign = lang === 'ar' ? 'right' : 'left';
+    
     const preHtml = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40' dir='rtl' lang='ar'>
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40' dir='${dir}' lang='${lang}'>
         <head>
             <meta charset='utf-8'>
-            <title>تقرير المواءمة النظرية</title>
+            <title>${t.reportTitle}</title>
             <style>
-                body { font-family: 'Arial', sans-serif; direction: rtl; text-align: right; }
+                body { font-family: 'Arial', sans-serif; direction: ${dir}; text-align: ${textAlign}; }
                 h1, h2, h3, h4 { font-family: 'Arial', sans-serif; }
                 .no-export { display: none; }
             </style>
@@ -63,7 +68,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
             <div className="bg-indigo-600 p-2 rounded-lg text-white shadow-md shadow-indigo-200">
                 <FileText className="w-5 h-5"/>
             </div>
-            التقرير النهائي للمواءمة
+            {t.reportTitle}
         </h2>
         <div className="flex flex-wrap md:flex-nowrap gap-3 w-full md:w-auto">
           
@@ -72,7 +77,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
             className="flex-1 md:flex-none justify-center px-4 py-3 text-slate-600 hover:bg-white hover:text-blue-600 border border-transparent hover:border-blue-200 hover:shadow-sm rounded-xl flex items-center gap-2 transition-all text-sm font-bold"
           >
             <Download className="w-4 h-4" />
-            تصدير Word
+            {t.exportWord}
           </button>
 
           <div className="w-px h-6 bg-slate-200 hidden md:block mx-1"></div>
@@ -82,7 +87,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
             className="flex-1 md:flex-none justify-center px-6 py-3 bg-white text-slate-600 border border-slate-200 hover:border-indigo-200 hover:text-indigo-600 rounded-xl flex items-center gap-2 transition-all text-sm font-bold shadow-sm"
           >
             <RefreshCw className="w-4 h-4" />
-            بحث جديد
+            {t.newSearch}
           </button>
         </div>
       </div>
@@ -92,7 +97,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
          {/* Internal content wrapper for padding */}
          <div id="report-content" className="p-8 md:p-16 relative bg-white">
             
-            {/* Top accent - Hidden in Word export via inline styles if needed, but useful for visuals */}
+            {/* Top accent */}
             <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-indigo-600 via-blue-500 to-indigo-600"></div>
             
             {/* Report Header */}
@@ -103,7 +108,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
                    </span>
                    <div className="flex items-center gap-2 text-slate-400 text-sm font-bold bg-slate-50 px-3 py-1 rounded-lg">
                      <Calendar className="w-4 h-4" />
-                     <span>{new Date().toLocaleDateString('ar-BH', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                     <span>{new Date().toLocaleDateString(lang === 'ar' ? 'ar-BH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                    </div>
                 </div>
                 <h1 className="text-3xl md:text-4xl font-black text-slate-900 leading-tight mb-6">
@@ -111,7 +116,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
                 </h1>
                 <div className="inline-flex items-center gap-3 bg-indigo-50 px-5 py-3 rounded-xl border border-indigo-100">
                     <Layers className="w-5 h-5 text-indigo-600" />
-                    <span className="text-slate-700 font-bold">النظرية المعتمدة:</span>
+                    <span className="text-slate-700 font-bold">{t.adoptedTheoryLabel}</span>
                     <span className="text-indigo-700 font-black text-lg">{theory.name}</span>
                 </div>
             </div>
@@ -120,7 +125,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
             <div className="relative z-10 mb-14" style={{ pageBreakInside: 'avoid' }}>
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-1.5 h-8 bg-indigo-500 rounded-full"></div>
-                    <h3 className="text-2xl font-black text-slate-900">مبررات المواءمة النظرية</h3>
+                    <h3 className="text-2xl font-black text-slate-900">{t.justificationTitle}</h3>
                 </div>
                 <div className="text-slate-700 leading-9 text-lg text-justify font-medium bg-slate-50/50 p-8 rounded-2xl border border-slate-100/80">
                     {report.theory_integration.split('\n\n').map((paragraph, index) => (
@@ -134,11 +139,11 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
             {/* Variables */}
             <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 mb-14" style={{ pageBreakInside: 'avoid' }}>
                 <div className="bg-emerald-50/80 border border-emerald-100 rounded-3xl p-8 relative overflow-hidden group">
-                    <h4 className="text-emerald-800 font-extrabold mb-4 text-sm uppercase tracking-wider relative z-10">المتغير المستقل</h4>
+                    <h4 className="text-emerald-800 font-extrabold mb-4 text-sm uppercase tracking-wider relative z-10">{t.ivLabel}</h4>
                     <p className="text-emerald-950 font-bold text-xl leading-relaxed relative z-10">{report.independent_variable}</p>
                 </div>
                 <div className="bg-rose-50/80 border border-rose-100 rounded-3xl p-8 relative overflow-hidden group">
-                    <h4 className="text-rose-800 font-extrabold mb-4 text-sm uppercase tracking-wider relative z-10">المتغير التابع</h4>
+                    <h4 className="text-rose-800 font-extrabold mb-4 text-sm uppercase tracking-wider relative z-10">{t.dvLabel}</h4>
                     <p className="text-rose-950 font-bold text-xl leading-relaxed relative z-10">{report.dependent_variable}</p>
                 </div>
             </div>
@@ -152,7 +157,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
                         <div className="w-1.5 h-8 bg-amber-500 rounded-full"></div>
                         <div className="flex items-center gap-2">
                             <Lightbulb className="w-6 h-6 text-amber-500" />
-                            <h3 className="text-2xl font-black text-slate-900">الفرضيات الأساسية للنظرية</h3>
+                            <h3 className="text-2xl font-black text-slate-900">{t.theoryHypotheses}</h3>
                         </div>
                     </div>
                     <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-6">
@@ -175,7 +180,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
                         <div className="w-1.5 h-8 bg-indigo-500 rounded-full"></div>
                          <div className="flex items-center gap-2">
                             <GraduationCap className="w-6 h-6 text-indigo-500" />
-                            <h3 className="text-2xl font-black text-slate-900">فرضيات الدراسة المقترحة</h3>
+                            <h3 className="text-2xl font-black text-slate-900">{t.studyHypotheses}</h3>
                          </div>
                     </div>
                     <ul className="space-y-4">
@@ -199,12 +204,10 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/60 max-w-3xl mx-auto">
                     <div className="flex items-center justify-center gap-2 mb-2 text-amber-600 font-black text-sm">
                         <AlertTriangle className="w-4 h-4" />
-                        <span>تنويه وإخلاء مسؤولية</span>
+                        <span>{t.disclaimerTitle}</span>
                     </div>
                     <p className="text-slate-500 text-xs font-medium leading-relaxed">
-                        تم إنشاء هذا التقرير تلقائياً بواسطة نظام المواءمة النظرية الذكي عن طريق الذكاء الإصطناعي. 
-                        قد يحتوي التقرير على أخطاء أو معلومات غير دقيقة، لذا يجب على المستخدم مراجعة المعلومات 
-                        والتحقق من صحتها والتفاصيل الواردة واستخدامها على مسؤوليته الشخصية.
+                        {t.disclaimerText}
                     </p>
                  </div>
             </div>
