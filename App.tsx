@@ -47,11 +47,11 @@ const App: React.FC = () => {
         suggestedTheories: theories,
         step: 2,
       }));
-    } catch (error) {
+    } catch (error: any) {
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error: "حدث خطأ أثناء الاتصال بالخادم الذكي. يرجى التحقق من اتصالك والمحاولة مرة أخرى.",
+        error: error.message || "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
       }));
     }
   };
@@ -71,10 +71,10 @@ const App: React.FC = () => {
             ...prev,
             suggestedTheories: [...prev.suggestedTheories, ...newTheories]
         }));
-    } catch (error) {
+    } catch (error: any) {
          setState((prev) => ({
             ...prev,
-            error: "فشل تحميل المزيد من النظريات.",
+            error: error.message || "فشل تحميل المزيد من النظريات.",
           }));
     } finally {
         setIsLoadingMore(false);
@@ -96,11 +96,11 @@ const App: React.FC = () => {
         finalReport: report,
         step: 3,
       }));
-    } catch (error) {
+    } catch (error: any) {
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error: "فشل إنشاء التقرير النهائي. يرجى المحاولة لاحقاً.",
+        error: error.message || "فشل إنشاء التقرير النهائي. يرجى المحاولة لاحقاً.",
       }));
     }
   };
@@ -128,8 +128,9 @@ const App: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex-grow w-full">
         <main className="relative mt-8">
             {state.error && (
-                <div className="bg-rose-50 text-rose-900 p-6 rounded-2xl mb-8 text-center border border-rose-200 shadow-sm font-bold animate-in fade-in slide-in-from-top-4">
-                    {state.error}
+                <div className="bg-rose-50 text-rose-900 p-6 rounded-2xl mb-8 text-center border border-rose-200 shadow-sm font-bold animate-in fade-in slide-in-from-top-4 flex flex-col items-center gap-2">
+                    <span className="text-2xl">⚠️</span>
+                    <span>{state.error}</span>
                 </div>
             )}
 

@@ -3,16 +3,51 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AcademicLevel, Theory, Report, ComparisonResult } from "../types";
 
 // Initialize the Google GenAI client
-// The API key is injected via vite.config.ts from process.env.API_KEY
-// We assume process.env.API_KEY is available. If running locally without it, this will throw.
 const apiKey = process.env.API_KEY;
 if (!apiKey) {
-  console.error("API Key is missing. Please check your vite.config.ts and environment variables.");
+  console.warn("API Key is missing. Please check your vite.config.ts and environment variables.");
 }
 
 const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
 const MODEL_NAME = "gemini-2.5-flash";
+
+/**
+ * Centralized error handler to convert technical errors into user-friendly Arabic messages.
+ */
+const handleError = (error: any, context: string): never => {
+  console.error(`Error in ${context}:`, error);
+
+  const msg = (error?.message || "").toString();
+
+  // Check for specific error patterns
+  if (msg.includes("API key") || !apiKey) {
+    throw new Error("مفتاح الربط (API Key) مفقود أو غير صحيح. يرجى التحقق من الإعدادات.");
+  }
+
+  if (msg.includes("429") || msg.includes("quota") || msg.includes("resource")) {
+    throw new Error("عذراً، تم تجاوز حد الاستخدام المسموح به حالياً. يرجى الانتظار قليلاً ثم المحاولة.");
+  }
+
+  if (msg.includes("503") || msg.includes("overloaded")) {
+    throw new Error("الخادم مشغول حالياً بسبب ضغط الطلبات. يرجى المحاولة بعد دقيقة.");
+  }
+
+  if (msg.includes("SAFETY") || msg.includes("blocked") || msg.includes("candidate")) {
+    throw new Error("تم حظر إنشاء المحتوى بسبب معايير السلامة. يرجى محاولة تعديل صياغة العنوان البحثي ليكون أكثر أكاديمية.");
+  }
+
+  if (msg.includes("JSON") || msg.includes("SyntaxError") || msg.includes("parse")) {
+    throw new Error("حدث خطأ في معالجة البيانات الواردة من النظام الذكي. يرجى المحاولة مرة أخرى.");
+  }
+
+  if (msg.includes("fetch") || msg.includes("network") || msg.includes("failed")) {
+    throw new Error("فشل الاتصال بالإنترنت. يرجى التحقق من الشبكة.");
+  }
+
+  // Default generic error
+  throw new Error("حدث خطأ غير متوقع أثناء المعالجة. يرجى المحاولة لاحقاً.");
+};
 
 export const getTheorySuggestions = async (
   title: string,
@@ -21,57 +56,44 @@ export const getTheorySuggestions = async (
   existingTheories: string[] = []
 ): Promise<Theory[]> => {
   try {
+    if (!apiKey) throw new Error("API key is missing");
+
     console.log("Fetching theories for:", title, "Level:", level, "Foundation:", foundation);
     
-    // Define level-specific depth instructions with higher academic rigor
     let depthInstruction = "";
     if (level === AcademicLevel.Bachelor) {
-      depthInstruction = "مستوى البكالوريوس: ركز على 'النظريات الكلاسيكية والتأسيسية' (Classical & Foundational Theories) التي تكون مباشرة وواضحة وتفسر العلاقة بين المتغيرات بشكل أساسي ومباشر دون تعقيد فلسفي.";
+      depthInstruction = "مستوى البكالوريوس: ركز على 'النظريات الكلاسيكية والتأسيسية' (Classical & Foundational Theories) التي تكون مباشرة وواضحة وتفسر العلاقة بين المتغيرات بشكل أساسي ومباشر.";
     } else if (level === AcademicLevel.Master) {
-      depthInstruction = "مستوى الماجستير: ركز على 'النظريات التحليلية والوسيطة' (Analytical & Mediating Theories) التي تسمح باختبار العلاقات المعقدة وتفسر العمليات الوسيطة (Process-oriented) وتناسب الدراسات الوصفية والتحليلية.";
+      depthInstruction = "مستوى الماجستير: ركز على 'النظريات التحليلية والوسيطة' (Analytical & Mediating Theories) التي تسمح باختبار العلاقات المعقدة وتفسر العمليات الوسيطة.";
     } else if (level === AcademicLevel.PhD) {
-      depthInstruction = "مستوى الدكتوراة: ركز على 'الأطر النظرية الفلسفية والنماذج الكلية' (Meta-Theories & Comprehensive Frameworks) التي تتسم بالأصالة والعمق، وتسمح ببناء نموذج مفاهيمي يضيف معرفة جديدة (Original Contribution) وليس مجرد تطبيق.";
+      depthInstruction = "مستوى الدكتوراة: ركز على 'الأطر النظرية الفلسفية والنماذج الكلية' (Meta-Theories & Comprehensive Frameworks) التي تتسم بالأصالة والعمق.";
     }
 
     const exclusionInstruction = existingTheories.length > 0 
-      ? `تنبيه هام جداً: المستخدم طلب المزيد من النظريات. يجب عليك **استبعاد** النظريات التالية نهائياً وعدم تكرارها: (${existingTheories.join("، ")}). ابحث عن بدائل علمية رصينة ومختلفة تخدم نفس العنوان.` 
+      ? `تنبيه هام: المستخدم طلب المزيد. استبعد هذه النظريات تماماً: (${existingTheories.join("، ")}).` 
       : "";
 
     const prompt = `
-      الدور: أنت بروفيسور متخصص في "بناء الأطر النظرية" ومناهج البحث العلمي المتقدمة.
-      المهمة: قم بتحليل دقيق جداً لعنوان الدراسة المقدم أدناه، واستنتج "الآلية السببية" (Causal Mechanism) التي تربط المتغيرات، ثم اقترح أفضل 3 نظريات علمية تنتمي للمجال التأسيسي المحدد.
+      الدور: أنت بروفيسور متخصص في "بناء الأطر النظرية".
+      المهمة: تحليل عنوان الدراسة واستنتاج "الآلية السببية" واقتراح 3 نظريات علمية دقيقة.
 
-      بيانات الإدخال:
+      البيانات:
       العنوان: "${title}"
-      المستوى الأكاديمي: "${level}"
-      المجال التأسيسي (Discipline Base): "${foundation}"
+      المستوى: "${level}"
+      المجال: "${foundation}"
       
-      تعليمات جوهرية للمجال التأسيسي:
-      لقد حدد الباحث أن دراسته تنبني على أساس "${foundation}".
-      لذا يجب أن تكون النظريات المقترحة **مشتقة أساساً من أدبيات هذا المجال** أو معتمدة بشكل واسع فيه.
-      (مثلاً: إذا اختار "إعلامي"، ابحث عن نظريات الاتصال الجماهيري وتأثيرات الإعلام وليس نظريات علم النفس السريري، إلا إذا كان هناك تداخل قوي).
+      التعليمات:
+      1. النظريات يجب أن تكون من صلب أدبيات المجال "${foundation}".
+      2. ${depthInstruction}
+      3. ${exclusionInstruction}
+      4. تجنب النظريات العامة جداً إلا إذا كانت هي الأساس الوحيد.
 
-      تعليمات مستوى العمق:
-      ${depthInstruction}
+      شروط المخرجات:
+      - اللغة: عربية فصحى فقط (بدون مصطلحات إنجليزية في الأسماء).
+      - التوثيق: ذكر المؤسس والسنة في التبرير.
+      - التبرير: شرح سبب الملاءمة للمتغيرات.
 
-      ${exclusionInstruction}
-
-      خطوات التحليل المطلوبة منك (Deep Analysis):
-      1. تأكد من أن النظريات تخدم المجال "${foundation}" بشكل مباشر.
-      2. حدد المتغير المستقل (السبب) والمتغير التابع (النتيجة) والسياق.
-      3. ابحث عن النظريات التي صممت خصيصاً لتفسر انتقال الأثر من [المتغير المستقل] إلى [المتغير التابع] ضمن سياق ${foundation}.
-      4. تجنب النظريات العامة (مثل Maslow أو SWOT) إلا إذا كانت هي الأساس الوحيد في الأدبيات لهذا الموضوع.
-
-      شروط المخرجات الصارمة:
-      1. اللغة: العربية الفصحى الأكاديمية الرصينة فقط.
-      2. ممنوع استخدام أحرف إنجليزية نهائياً في الأسماء (مثلاً: لا تكتب TAM، اكتب نموذج قبول التكنولوجيا).
-      3. التوثيق الإلزامي في (match_reason): يجب ذكر "اسم المؤسس/المنظر الأصلي" و"سنة الطرح" للنظرية.
-      4. صياغة (match_reason): اشرح "لماذا" هذه النظرية تحديداً تصلح لهذا العنوان في ضوء المجال ${foundation}.
-
-      تنسيق الاستجابة (JSON):
-      مصفوفة تحتوي على كائنات:
-      - name: اسم النظرية (عربي فقط).
-      - match_reason: الفقرة التبريرية (شاملة المؤسس والسنة والربط العميق بالمشكلة والمجال).
+      التنسيق (JSON Array): [{ name, match_reason }]
     `;
 
     const response = await ai.models.generateContent({
@@ -94,16 +116,14 @@ export const getTheorySuggestions = async (
     });
 
     if (!response.text) {
-        console.warn("Gemini response was empty or blocked.");
-        throw new Error("لم يتمكن النظام من توليد استجابة. قد يكون السبب قيود المحتوى أو ضعف الاتصال.");
+        throw new Error("Empty response received from AI model.");
     }
 
     const jsonText = response.text;
-    console.log("Gemini Response:", jsonText);
     return JSON.parse(jsonText) as Theory[];
+
   } catch (error) {
-    console.error("Error fetching theory suggestions:", error);
-    throw error;
+    return handleError(error, "getTheorySuggestions");
   }
 };
 
@@ -112,29 +132,27 @@ export const compareTheories = async (
     theories: Theory[]
 ): Promise<ComparisonResult> => {
     try {
+        if (!apiKey) throw new Error("API key is missing");
+
         const theoryNames = theories.map(t => t.name).join("، ");
         const prompt = `
-            الدور: خبير استراتيجي في البحث العلمي ومناهج الدراسات العليا.
-            المدخلات:
-            1. عنوان الدراسة (المرجع الأساسي للمقارنة): "${title}"
-            2. النظريات المراد مقارنتها: (${theoryNames})
+            الدور: خبير مناهج بحث.
+            المهمة: مقارنة نقدية بين النظريات التالية لخدمة العنوان: "${title}".
+            النظريات: (${theoryNames})
 
-            المهمة: إجراء مقارنة نقدية دقيقة لتحديد أي النظريات تخدم العنوان أعلاه بشكل أفضل.
+            المطلوب (عربي فقط):
+            1. نقاط الاتفاق.
+            2. نقاط الاختلاف الجوهرية.
+            3. تحليل كل نظرية (نقاط قوة وضعف بالنسبة للعنوان).
+            4. توصية ختامية.
 
-            تحذير هام: يجب أن تستند التوصية والمقارنة بالكامل على مدى ملاءمة النظرية لمتغيرات وسياق العنوان المذكور ("${title}"). لا تقدم مقارنة عامة، بل مقارنة تطبيقية على هذه الدراسة.
-
-            المتطلبات:
-            1. اللغة العربية الفصحى فقط.
-            2. حدد "القواسم المشتركة" (كيف تتفق النظريات في تفسير الظاهرة الموجودة في العنوان).
-            3. حدد "نقاط الاختلاف الجوهرية" (كيف تختلف في زاوية النظر للمتغيرات).
-            4. لكل نظرية، اذكر "نقاط القوة" (لماذا تصلح لهذا العنوان) و"نقاط الضعف/التحديات" (ما الذي قد تغفله في سياق هذا العنوان).
-            5. قدم توصية ختامية بالنظرية الأرجح، مع ذكر السبب المرتبط بطبيعة العنوان.
-
-            نسق المخرجات (JSON):
-            - common_ground: نص الفقرة.
-            - key_differences: نص الفقرة.
-            - analysis: مصفوفة كائنات، لكل نظرية { theory_name, pros, cons }.
-            - recommendation: نص التوصية (يجب أن يشير للعنوان صراحة).
+            التنسيق (JSON):
+            {
+              common_ground: string,
+              key_differences: string,
+              analysis: [{ theory_name, pros, cons }],
+              recommendation: string
+            }
         `;
 
         const response = await ai.models.generateContent({
@@ -164,12 +182,11 @@ export const compareTheories = async (
             }
         });
 
-        if (!response.text) throw new Error("Empty comparison response");
+        if (!response.text) throw new Error("Empty response from comparison.");
         return JSON.parse(response.text) as ComparisonResult;
 
     } catch (error) {
-        console.error("Error comparing theories:", error);
-        throw error;
+        return handleError(error, "compareTheories");
     }
 }
 
@@ -179,27 +196,19 @@ export const getFinalReport = async (
   theory: Theory
 ): Promise<Report> => {
   try {
+    if (!apiKey) throw new Error("API key is missing");
     console.log("Generating report for:", theory.name);
 
     const prompt = `
-      الدور: خبير مناهج بحث علمي أكاديمي صارم.
-      السياق: دراسة بعنوان "${title}".
-      النظرية المعتمدة: "${theory.name}".
-      المستوى الأكاديمي: "${level}".
+      الدور: خبير مناهج بحث علمي.
+      المدخلات: العنوان "${title}"، النظرية "${theory.name}"، المستوى "${level}".
 
-      المهمة: إعداد تقرير مواءمة نظرية شامل ودقيق.
-
-      القيود الصارمة:
-      1. اللغة: العربية فقط (يمنع استخدام أي أحرف إنجليزية أو اختصارات لاتينية).
-      2. "theory_integration" (مبررات المواءمة): يجب أن تتكون من فقرتين منفصلتين تماماً بينهما سطرين فارغين (\\n\\n):
-         - الفقرة الأولى: خلفية تاريخية عميقة عن النظرية، مع ذكر "اسم المؤسس" و"سنة التأسيس" وفلسفتها الجوهرية.
-         - الفقرة الثانية: مواءمة تطبيقية دقيقة، تشرح كيف سيتم "تطويع" مفاهيم النظرية لقياس متغيرات هذا العنوان تحديداً.
-      3. "independent_variable": استخرج المتغير المستقل من العنوان بدقة.
-      4. "dependent_variable": استخرج المتغير التابع من العنوان بدقة.
-      5. "theory_hypotheses": اذكر 3 فرضيات/مسلمات أساسية للنظرية نفسها (بشكل عام وتجريدي، كما وضعها المؤسس).
-      6. "study_hypotheses": قم بصياغة 4 فرضيات بحثية للدراسة الحالية، بحيث تعكس مصطلحات النظرية (مثلاً: إذا كانت النظرية TAM، استخدم مصطلحات "سهولة الاستخدام المدركة" في الفرضية).
-
-      تنسيق الاستجابة (JSON) المطابق للمخطط.
+      المطلوب (تقرير JSON عربي):
+      1. theory_integration: فقرتان منفصلتان بـ (\\n\\n). الأولى عن تاريخ ومؤسس النظرية. الثانية عن مواءمتها للدراسة.
+      2. independent_variable: المتغير المستقل.
+      3. dependent_variable: المتغير التابع.
+      4. theory_hypotheses: 3 فرضيات للنظرية الأم.
+      5. study_hypotheses: 4 فرضيات للدراسة الحالية.
     `;
 
     const response = await ai.models.generateContent({
@@ -228,13 +237,11 @@ export const getFinalReport = async (
     });
 
     if (!response.text) {
-         throw new Error("No content generated for report.");
+         throw new Error("Empty response for final report.");
     }
 
-    const jsonText = response.text;
-    return JSON.parse(jsonText) as Report;
+    return JSON.parse(response.text) as Report;
   } catch (error) {
-    console.error("Error fetching final report:", error);
-    throw error;
+    return handleError(error, "getFinalReport");
   }
 };
