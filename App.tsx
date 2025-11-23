@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import StepInput from "./components/StepInput";
 import StepTheories from "./components/StepTheories";
@@ -10,6 +11,7 @@ import { getTheorySuggestions, getFinalReport } from "./services/gemini";
 const initialState: AppState = {
   step: 1,
   academicLevel: AcademicLevel.Master,
+  researchFoundation: "",
   researchTitle: "",
   suggestedTheories: [],
   selectedTheory: null,
@@ -20,12 +22,25 @@ const initialState: AppState = {
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(initialState);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const handleInputSubmit = async (title: string, level: AcademicLevel) => {
-    setState((prev) => ({ ...prev, isLoading: true, error: null, researchTitle: title, academicLevel: level }));
+  // Automatically scroll to top when the step changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [state.step]);
+
+  const handleInputSubmit = async (title: string, level: AcademicLevel, foundation: string) => {
+    setState((prev) => ({ 
+      ...prev, 
+      isLoading: true, 
+      error: null, 
+      researchTitle: title, 
+      academicLevel: level,
+      researchFoundation: foundation
+    }));
     
     try {
-      const theories = await getTheorySuggestions(title, level);
+      const theories = await getTheorySuggestions(title, level, foundation);
       setState((prev) => ({
         ...prev,
         isLoading: false,
@@ -38,6 +53,31 @@ const App: React.FC = () => {
         isLoading: false,
         error: "حدث خطأ أثناء الاتصال بالخادم الذكي. يرجى التحقق من اتصالك والمحاولة مرة أخرى.",
       }));
+    }
+  };
+
+  const handleLoadMoreTheories = async () => {
+    setIsLoadingMore(true);
+    try {
+        const existingNames = state.suggestedTheories.map(t => t.name);
+        const newTheories = await getTheorySuggestions(
+            state.researchTitle, 
+            state.academicLevel, 
+            state.researchFoundation,
+            existingNames
+        );
+        
+        setState(prev => ({
+            ...prev,
+            suggestedTheories: [...prev.suggestedTheories, ...newTheories]
+        }));
+    } catch (error) {
+         setState((prev) => ({
+            ...prev,
+            error: "فشل تحميل المزيد من النظريات.",
+          }));
+    } finally {
+        setIsLoadingMore(false);
     }
   };
 
@@ -74,7 +114,8 @@ const App: React.FC = () => {
   }
 
   const getLoadingMessage = () => {
-      if (state.step === 1) return "جاري تحليل العنوان واقتراح النظريات العلمية المناسبة...";
+      if (isLoadingMore) return "جاري البحث عن نظريات إضافية متنوعة...";
+      if (state.step === 1) return `جاري تحليل العنوان بناءً على الأسس ${state.researchFoundation || 'العلمية'} واقتراح النظريات...`;
       if (state.step === 2) return "جاري صياغة الفرضيات ومواءمة الإطار النظري...";
       return "جاري المعالجة...";
   };
@@ -101,6 +142,8 @@ const App: React.FC = () => {
                     theories={state.suggestedTheories} 
                     onSelect={handleTheorySelect} 
                     onBack={goBackToInput}
+                    onLoadMore={handleLoadMoreTheories}
+                    title={state.researchTitle}
                 />
             )}
 
@@ -121,7 +164,7 @@ const App: React.FC = () => {
           <p className="text-slate-400 text-xs font-bold mt-2 font-mono tracking-widest opacity-60 hover:opacity-100 transition-opacity" dir="ltr">@mShareeda 2025</p>
       </footer>
 
-      {state.isLoading && <Loading message={getLoadingMessage()} />}
+      {(state.isLoading || isLoadingMore) && <Loading message={getLoadingMessage()} />}
     </div>
   );
 };

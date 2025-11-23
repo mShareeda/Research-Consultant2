@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AcademicLevel, Theory, Report } from "../types";
+import { AcademicLevel, Theory, Report, ComparisonResult } from "../types";
 
 // Initialize the Google GenAI client
 // The API key is injected via vite.config.ts from process.env.API_KEY
@@ -16,10 +16,12 @@ const MODEL_NAME = "gemini-2.5-flash";
 
 export const getTheorySuggestions = async (
   title: string,
-  level: AcademicLevel
+  level: AcademicLevel,
+  foundation: string,
+  existingTheories: string[] = []
 ): Promise<Theory[]> => {
   try {
-    console.log("Fetching theories for:", title, "Level:", level);
+    console.log("Fetching theories for:", title, "Level:", level, "Foundation:", foundation);
     
     // Define level-specific depth instructions with higher academic rigor
     let depthInstruction = "";
@@ -31,33 +33,45 @@ export const getTheorySuggestions = async (
       depthInstruction = "مستوى الدكتوراة: ركز على 'الأطر النظرية الفلسفية والنماذج الكلية' (Meta-Theories & Comprehensive Frameworks) التي تتسم بالأصالة والعمق، وتسمح ببناء نموذج مفاهيمي يضيف معرفة جديدة (Original Contribution) وليس مجرد تطبيق.";
     }
 
+    const exclusionInstruction = existingTheories.length > 0 
+      ? `تنبيه هام جداً: المستخدم طلب المزيد من النظريات. يجب عليك **استبعاد** النظريات التالية نهائياً وعدم تكرارها: (${existingTheories.join("، ")}). ابحث عن بدائل علمية رصينة ومختلفة تخدم نفس العنوان.` 
+      : "";
+
     const prompt = `
       الدور: أنت بروفيسور متخصص في "بناء الأطر النظرية" ومناهج البحث العلمي المتقدمة.
-      المهمة: تحليل العنوان البحثي المقدم بدقة متناهية لاقتراح أفضل 3 نظريات علمية رصينة تفسر "المشكلة البحثية".
+      المهمة: قم بتحليل دقيق جداً لعنوان الدراسة المقدم أدناه، واستنتج "الآلية السببية" (Causal Mechanism) التي تربط المتغيرات، ثم اقترح أفضل 3 نظريات علمية تنتمي للمجال التأسيسي المحدد.
 
       بيانات الإدخال:
       العنوان: "${title}"
       المستوى الأكاديمي: "${level}"
+      المجال التأسيسي (Discipline Base): "${foundation}"
       
+      تعليمات جوهرية للمجال التأسيسي:
+      لقد حدد الباحث أن دراسته تنبني على أساس "${foundation}".
+      لذا يجب أن تكون النظريات المقترحة **مشتقة أساساً من أدبيات هذا المجال** أو معتمدة بشكل واسع فيه.
+      (مثلاً: إذا اختار "إعلامي"، ابحث عن نظريات الاتصال الجماهيري وتأثيرات الإعلام وليس نظريات علم النفس السريري، إلا إذا كان هناك تداخل قوي).
+
       تعليمات مستوى العمق:
       ${depthInstruction}
 
-      خطوات التحليل المطلوبة منك (Chain of Thought):
-      1. قم بتفكيك العنوان وتحديد "المتغير المستقل" و"المتغير التابع" بدقة.
-      2. حدد "التخصص الدقيق" (مثلاً: علم النفس التنظيمي، تكنولوجيا التعليم، التسويق الرقمي، إلخ).
-      3. ابحث في ذاكرتك عن النظريات "الأم" (Seminal Theories) في هذا التخصص التي تشرح "لماذا" يؤثر المتغير المستقل في التابع.
-      4. استبعد النظريات العامة جداً (مثل SWOT أو PESTLE) إلا إذا كانت جوهرية، واستبعد النماذج السطحية.
+      ${exclusionInstruction}
+
+      خطوات التحليل المطلوبة منك (Deep Analysis):
+      1. تأكد من أن النظريات تخدم المجال "${foundation}" بشكل مباشر.
+      2. حدد المتغير المستقل (السبب) والمتغير التابع (النتيجة) والسياق.
+      3. ابحث عن النظريات التي صممت خصيصاً لتفسر انتقال الأثر من [المتغير المستقل] إلى [المتغير التابع] ضمن سياق ${foundation}.
+      4. تجنب النظريات العامة (مثل Maslow أو SWOT) إلا إذا كانت هي الأساس الوحيد في الأدبيات لهذا الموضوع.
 
       شروط المخرجات الصارمة:
       1. اللغة: العربية الفصحى الأكاديمية الرصينة فقط.
-      2. ممنوع استخدام أحرف إنجليزية نهائياً (مثلاً: لا تكتب TAM، اكتب نموذج قبول التكنولوجيا).
-      3. التوثيق الإلزامي في (match_reason): يجب ذكر "اسم المؤسس/المنظر" و"سنة الطرح" لكل نظرية.
-      4. صياغة (match_reason): يجب أن تكون فقرة "منمقة ومقنعة" تشرح كيف تعالج النظرية مشكلة الدراسة تحديداً. استخدم عبارات مثل: "تعتبر هذه النظرية الأنسب لأنها تفسر الآلية التي من خلالها يؤثر..."
+      2. ممنوع استخدام أحرف إنجليزية نهائياً في الأسماء (مثلاً: لا تكتب TAM، اكتب نموذج قبول التكنولوجيا).
+      3. التوثيق الإلزامي في (match_reason): يجب ذكر "اسم المؤسس/المنظر الأصلي" و"سنة الطرح" للنظرية.
+      4. صياغة (match_reason): اشرح "لماذا" هذه النظرية تحديداً تصلح لهذا العنوان في ضوء المجال ${foundation}.
 
       تنسيق الاستجابة (JSON):
       مصفوفة تحتوي على كائنات:
       - name: اسم النظرية (عربي فقط).
-      - match_reason: الفقرة التبريرية (شاملة المؤسس والسنة والربط بالمشكلة).
+      - match_reason: الفقرة التبريرية (شاملة المؤسس والسنة والربط العميق بالمشكلة والمجال).
     `;
 
     const response = await ai.models.generateContent({
@@ -93,6 +107,72 @@ export const getTheorySuggestions = async (
   }
 };
 
+export const compareTheories = async (
+    title: string,
+    theories: Theory[]
+): Promise<ComparisonResult> => {
+    try {
+        const theoryNames = theories.map(t => t.name).join("، ");
+        const prompt = `
+            الدور: خبير استراتيجي في البحث العلمي ومناهج الدراسات العليا.
+            المدخلات:
+            1. عنوان الدراسة (المرجع الأساسي للمقارنة): "${title}"
+            2. النظريات المراد مقارنتها: (${theoryNames})
+
+            المهمة: إجراء مقارنة نقدية دقيقة لتحديد أي النظريات تخدم العنوان أعلاه بشكل أفضل.
+
+            تحذير هام: يجب أن تستند التوصية والمقارنة بالكامل على مدى ملاءمة النظرية لمتغيرات وسياق العنوان المذكور ("${title}"). لا تقدم مقارنة عامة، بل مقارنة تطبيقية على هذه الدراسة.
+
+            المتطلبات:
+            1. اللغة العربية الفصحى فقط.
+            2. حدد "القواسم المشتركة" (كيف تتفق النظريات في تفسير الظاهرة الموجودة في العنوان).
+            3. حدد "نقاط الاختلاف الجوهرية" (كيف تختلف في زاوية النظر للمتغيرات).
+            4. لكل نظرية، اذكر "نقاط القوة" (لماذا تصلح لهذا العنوان) و"نقاط الضعف/التحديات" (ما الذي قد تغفله في سياق هذا العنوان).
+            5. قدم توصية ختامية بالنظرية الأرجح، مع ذكر السبب المرتبط بطبيعة العنوان.
+
+            نسق المخرجات (JSON):
+            - common_ground: نص الفقرة.
+            - key_differences: نص الفقرة.
+            - analysis: مصفوفة كائنات، لكل نظرية { theory_name, pros, cons }.
+            - recommendation: نص التوصية (يجب أن يشير للعنوان صراحة).
+        `;
+
+        const response = await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        common_ground: { type: Type.STRING },
+                        key_differences: { type: Type.STRING },
+                        analysis: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    theory_name: { type: Type.STRING },
+                                    pros: { type: Type.STRING },
+                                    cons: { type: Type.STRING }
+                                }
+                            }
+                        },
+                        recommendation: { type: Type.STRING }
+                    }
+                }
+            }
+        });
+
+        if (!response.text) throw new Error("Empty comparison response");
+        return JSON.parse(response.text) as ComparisonResult;
+
+    } catch (error) {
+        console.error("Error comparing theories:", error);
+        throw error;
+    }
+}
+
 export const getFinalReport = async (
   title: string,
   level: AcademicLevel,
@@ -116,7 +196,7 @@ export const getFinalReport = async (
          - الفقرة الثانية: مواءمة تطبيقية دقيقة، تشرح كيف سيتم "تطويع" مفاهيم النظرية لقياس متغيرات هذا العنوان تحديداً.
       3. "independent_variable": استخرج المتغير المستقل من العنوان بدقة.
       4. "dependent_variable": استخرج المتغير التابع من العنوان بدقة.
-      5. "theory_hypotheses": اذكر 3 فرضيات/مسلمات أساسية للنظرية نفسها (بشكل عام وتجريدي).
+      5. "theory_hypotheses": اذكر 3 فرضيات/مسلمات أساسية للنظرية نفسها (بشكل عام وتجريدي، كما وضعها المؤسس).
       6. "study_hypotheses": قم بصياغة 4 فرضيات بحثية للدراسة الحالية، بحيث تعكس مصطلحات النظرية (مثلاً: إذا كانت النظرية TAM، استخدم مصطلحات "سهولة الاستخدام المدركة" في الفرضية).
 
       تنسيق الاستجابة (JSON) المطابق للمخطط.

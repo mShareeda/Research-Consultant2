@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Report, Theory, AcademicLevel } from "../types";
-import { RefreshCw, FileText, Layers, Download, Calendar, Lightbulb, GraduationCap } from "lucide-react";
+import { RefreshCw, FileText, Layers, Calendar, Lightbulb, GraduationCap, AlertTriangle } from "lucide-react";
 
 interface StepReportProps {
   report: Report;
@@ -11,30 +11,7 @@ interface StepReportProps {
   onReset: () => void;
 }
 
-declare global {
-  interface Window {
-    html2pdf: any;
-  }
-}
-
 const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, onReset }) => {
-  
-  const handleExportPDF = () => {
-    const element = document.getElementById('report-content');
-    if (!element || !window.html2pdf) return;
-
-    const opt = {
-      margin: [10, 10, 10, 10],
-      filename: `Research-Alignment-${new Date().getTime()}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, letterRendering: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-
-    window.html2pdf().set(opt).from(element).save();
-  };
-
   return (
     <div className="w-full max-w-5xl mx-auto animate-in fade-in duration-700 pb-10">
       
@@ -47,13 +24,6 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
             التقرير النهائي للمواءمة
         </h2>
         <div className="flex gap-3 w-full md:w-auto">
-           <button
-            onClick={handleExportPDF}
-            className="flex-1 md:flex-none justify-center px-6 py-3 bg-slate-900 text-white hover:bg-slate-800 rounded-xl flex items-center gap-2 transition-all text-sm font-bold shadow-lg shadow-slate-200 hover:-translate-y-0.5 active:translate-y-0"
-          >
-            <Download className="w-4 h-4" />
-            تصدير PDF
-          </button>
           <button
             onClick={onReset}
             className="flex-1 md:flex-none justify-center px-6 py-3 text-slate-600 hover:bg-white hover:text-indigo-600 border border-transparent hover:border-slate-200 hover:shadow-sm rounded-xl flex items-center gap-2 transition-all text-sm font-bold"
@@ -65,7 +35,10 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
       </div>
 
       {/* Printable Area */}
-      <div id="report-content" className="bg-white p-10 md:p-16 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 relative overflow-hidden">
+      <div 
+        id="report-content" 
+        className="bg-white p-10 md:p-16 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 relative overflow-hidden"
+      >
         {/* Top accent */}
         <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-indigo-600 via-blue-500 to-indigo-600"></div>
         
@@ -94,7 +67,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
         </div>
 
         {/* Justification */}
-        <div className="relative z-10 mb-14 break-inside-avoid">
+        <div className="relative z-10 mb-14">
             <div className="flex items-center gap-3 mb-6">
                 <div className="w-1.5 h-8 bg-indigo-500 rounded-full"></div>
                 <h3 className="text-2xl font-black text-slate-900">مبررات المواءمة النظرية</h3>
@@ -109,7 +82,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
         </div>
 
         {/* Variables */}
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 mb-14 break-inside-avoid">
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 mb-14">
             <div className="bg-emerald-50/80 border border-emerald-100 rounded-3xl p-8 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-100 rounded-bl-full -mr-12 -mt-12 transition-transform group-hover:scale-110"></div>
                 <h4 className="text-emerald-800 font-extrabold mb-4 text-sm uppercase tracking-wider relative z-10">المتغير المستقل</h4>
@@ -123,7 +96,7 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
         </div>
 
         {/* Hypotheses Section */}
-        <div className="relative z-10 break-inside-avoid space-y-10">
+        <div className="relative z-10 space-y-10">
             
             {/* Theory Hypotheses */}
             <div>
@@ -173,11 +146,19 @@ const StepReport: React.FC<StepReportProps> = ({ report, theory, title, level, o
 
         </div>
 
-        {/* Footer for Report */}
+        {/* Footer for Report with Disclaimer */}
         <div className="mt-16 pt-8 border-t-2 border-slate-50 text-center relative z-10">
-             <p className="text-slate-400 text-sm font-bold bg-slate-50 inline-block px-4 py-2 rounded-full">
-                تم إنشاء هذا التقرير تلقائياً بواسطة نظام المواءمة النظرية الذكي عن طريق الذكاء الإصطناعي
-             </p>
+             <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/60 max-w-3xl mx-auto">
+                <div className="flex items-center justify-center gap-2 mb-2 text-amber-600 font-black text-sm">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>تنويه وإخلاء مسؤولية</span>
+                </div>
+                <p className="text-slate-500 text-xs font-medium leading-relaxed">
+                    تم إنشاء هذا التقرير تلقائياً بواسطة نظام المواءمة النظرية الذكي عن طريق الذكاء الإصطناعي. 
+                    قد يحتوي التقرير على أخطاء أو معلومات غير دقيقة، لذا يجب على المستخدم مراجعة المعلومات 
+                    والتحقق من صحتها والتفاصيل الواردة واستخدامها على مسؤوليته الشخصية.
+                </p>
+             </div>
         </div>
 
       </div>

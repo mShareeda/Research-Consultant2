@@ -1,21 +1,23 @@
+
 import React, { useState } from "react";
-import { AcademicLevel } from "../types";
-import { ArrowLeft, Sparkles, BookOpen, GraduationCap, ScrollText } from "lucide-react";
+import { AcademicLevel, ResearchFoundation } from "../types";
+import { ArrowLeft, Sparkles, BookOpen, GraduationCap, ScrollText, Users, TrendingUp, Cpu, Brain, Briefcase, Gavel, Tv, MoreHorizontal } from "lucide-react";
 
 interface StepInputProps {
-  onSubmit: (title: string, level: AcademicLevel) => void;
+  onSubmit: (title: string, level: AcademicLevel, foundation: string) => void;
 }
 
 const StepInput: React.FC<StepInputProps> = ({ onSubmit }) => {
   const [title, setTitle] = useState("");
   const [level, setLevel] = useState<AcademicLevel>(AcademicLevel.Master);
+  const [foundation, setFoundation] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (title.trim().length > 10) {
+    if (title.trim().length > 10 && foundation) {
       setIsSubmitting(true);
-      onSubmit(title, level);
+      onSubmit(title, level, foundation);
     }
   };
 
@@ -25,21 +27,33 @@ const StepInput: React.FC<StepInputProps> = ({ onSubmit }) => {
     { id: AcademicLevel.PhD, icon: GraduationCap, label: "دكتوراة", desc: "أصالة علمية" },
   ];
 
+  const foundations: { id: ResearchFoundation; icon: any; label: string }[] = [
+    { id: "إعلامي", icon: Tv, label: "إعلامي واتصال" },
+    { id: "اجتماعي", icon: Users, label: "اجتماعي" },
+    { id: "اقتصادي", icon: TrendingUp, label: "اقتصادي" },
+    { id: "تربوي", icon: BookOpen, label: "تربوي" },
+    { id: "نفسي", icon: Brain, label: "نفسي" },
+    { id: "إداري", icon: Briefcase, label: "إداري" },
+    { id: "تقني", icon: Cpu, label: "تقني/رقمي" },
+    { id: "قانوني", icon: Gavel, label: "قانوني" },
+    { id: "أخرى", icon: MoreHorizontal, label: "مجال آخر" },
+  ];
+
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto">
       <div className="bg-white rounded-[2rem] shadow-card border border-white/50 p-6 md:p-10 animate-in slide-in-from-bottom-4 duration-500 ring-1 ring-slate-100">
         <div className="mb-10 text-center">
           <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">بيانات الدراسة الأساسية</h2>
           <p className="text-slate-500 text-lg leading-relaxed max-w-xl mx-auto text-balance">
-            أدخل عنوان بحثك لنقوم بتحليله واقتراح النظريات العلمية الأنسب التي تدعم متغيرات دراستك.
+            أدخل عنوان بحثك وحدد مجاله التأسيسي لنقوم بتحليله واقتراح النظريات العلمية الأنسب.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-10">
           {/* Academic Level Section */}
           <div className="space-y-4">
-            <label className="block text-sm font-extrabold text-slate-900 mr-1">
-              المستوى الأكاديمي
+            <label className="block text-lg font-extrabold text-slate-900 mr-1 border-r-4 border-indigo-600 pr-3">
+              1. المستوى الأكاديمي
             </label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {levels.map((lvl) => {
@@ -73,10 +87,39 @@ const StepInput: React.FC<StepInputProps> = ({ onSubmit }) => {
             </div>
           </div>
 
+          {/* Research Foundation Section */}
+          <div className="space-y-4">
+            <label className="block text-lg font-extrabold text-slate-900 mr-1 border-r-4 border-emerald-500 pr-3">
+              2. المجال التأسيسي للبحث
+              <span className="text-sm font-medium text-slate-400 mr-2">(على أي أساس علمي تبني دراستك؟)</span>
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {foundations.map((foun) => {
+                    const Icon = foun.icon;
+                    const isSelected = foundation === foun.id;
+                    return (
+                        <button
+                            key={foun.id}
+                            type="button"
+                            onClick={() => setFoundation(foun.id)}
+                            className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                                isSelected 
+                                ? "bg-emerald-50 border-emerald-500 text-emerald-800 shadow-sm transform scale-105" 
+                                : "bg-slate-50/50 border-transparent hover:bg-white hover:border-slate-200 text-slate-500"
+                            }`}
+                        >
+                            <Icon className={`w-5 h-5 ${isSelected ? "text-emerald-600" : "text-slate-400"}`} />
+                            <span className="font-bold text-sm">{foun.label}</span>
+                        </button>
+                    )
+                })}
+            </div>
+          </div>
+
           {/* Research Title Section */}
           <div className="space-y-4">
-            <label className="block text-sm font-extrabold text-slate-900 mr-1">
-              عنوان البحث المقترح
+            <label className="block text-lg font-extrabold text-slate-900 mr-1 border-r-4 border-amber-500 pr-3">
+              3. عنوان البحث المقترح
             </label>
             <div className="relative group">
                 <div className="absolute inset-0 bg-indigo-500/5 rounded-3xl blur-xl transition-opacity opacity-0 group-focus-within:opacity-100"></div>
@@ -98,15 +141,15 @@ const StepInput: React.FC<StepInputProps> = ({ onSubmit }) => {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={title.trim().length < 10 || isSubmitting}
+            disabled={title.trim().length < 10 || !foundation || isSubmitting}
             className={`w-full py-5 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 group transition-all duration-300 relative overflow-hidden
-              ${title.trim().length >= 10 && !isSubmitting
+              ${title.trim().length >= 10 && foundation && !isSubmitting
                 ? "bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-lg shadow-indigo-200 hover:shadow-indigo-300 hover:-translate-y-0.5 active:translate-y-0" 
                 : "bg-slate-100 text-slate-400 cursor-not-allowed"
               }`}
           >
             <span className="relative z-10">{isSubmitting ? "جاري البدء..." : "بدء التحليل الذكي"}</span>
-            {title.trim().length >= 10 && !isSubmitting ? (
+            {title.trim().length >= 10 && foundation && !isSubmitting ? (
                <Sparkles className="w-6 h-6 group-hover:animate-pulse relative z-10" />
             ) : (
                <ArrowLeft className="w-6 h-6 relative z-10" />
